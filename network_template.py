@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
 import pickle
+import time
+
+## scikit 
 
 class Network(object):
     def __init__(self, sizes, optimizer="sgd"):
@@ -35,7 +38,10 @@ class Network(object):
                 for k in range(0, n, mini_batch_size)]
 
             for mini_batch in mini_batches:
+                start = time.time()
                 output, Zs, As = self.forward_pass(mini_batch[0])
+                end = time.time()
+                print(f">>> run time = {end-start}")
                 gw, gb = net.backward_pass(output, mini_batch[1], Zs, As)
 
                 self.update_network(gw, gb, eta_current)
@@ -95,7 +101,22 @@ class Network(object):
         # input - numpy array of dimensions [n0 x m], where m is the number of examples in the mini batch and
         # n0 is the number of input attributes
         ########## Implement the forward pass
-        pass
+        
+        As = []
+        Zs = []
+        input = input
+        for w, b in zip(self.weights, self.biases):
+            z = np.dot(w, input) + b
+            a = sigmoid(z)
+
+            Zs.append(z)
+            As.append(a)
+            input = a
+
+        output = As.pop(-1)
+
+        return output, Zs, As
+        
 
     def backward_pass(self, output, target, Zs, activations):
         ########## Implement the backward pass
