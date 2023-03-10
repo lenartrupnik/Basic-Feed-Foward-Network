@@ -186,7 +186,7 @@ class Network(object):
         
         dZ = softmax_dLdZ(output, target)
         dW = np.dot(dZ, activations[-2].transpose()) + (self.lmbd / self.batch_size) * self.weights[-1]
-        dB = np.sum(dZ, axis=1, keepdims=True) / self.batch_size
+        dB = np.sum(dZ, axis=1, keepdims=True)
         dAPrev = np.dot(self.weights[-1].transpose(), dZ)
         
         dWs[-1] = dW
@@ -195,7 +195,7 @@ class Network(object):
         for l in range(self.layers -2, 0, -1):
             dZ = dAPrev * sigmoid_prime(Zs[l-1])
             dW = np.dot(dZ, activations[l-1].transpose()) + (self.lmbd / self.batch_size) * self.weights[l-1]
-            dB =  np.sum(dZ, axis=1, keepdims=True) / self.batch_size
+            dB =  np.sum(dZ, axis=1, keepdims=True)
             
             if l > 1:
                 dAPrev = np.dot(self.weights[l-1].transpose(), dZ)
@@ -283,5 +283,5 @@ if __name__ == "__main__":
     # The initial settings are not even close to the optimal network architecture, try increasing the number of layers
     # and neurons and see what happens.
     net = Network([train_data.shape[0],100, 100, 10], optimizer="adam")
-    net.train(train_data,train_class, val_data, val_class, 28, 32, 0.001)
+    net.train(train_data,train_class, val_data, val_class, 20, 64, 0.001)
     net.eval_network(test_data, test_class)
