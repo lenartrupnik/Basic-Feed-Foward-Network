@@ -31,15 +31,16 @@ class Network(object):
         # training_class - numpy array of dimensions [c x m], where c is the number of classes
         # epochs - number of passes over the dataset
         # mini_batch_size - number of examples the network uses to compute the gradient estimation
+        
         iteration_index = 1
         eta_current = eta
         self.regularization = regularization
         decay_rate = 0.05
-
         self.batch_size = training_data.shape[1]
         losses = []
         loss_eval = []
         acc_val = []
+        
         for j in range(epochs):
             print("Epoch"+str(j))
             loss_avg = 0.0
@@ -282,6 +283,6 @@ if __name__ == "__main__":
     # number of input attributes from the data, and the last layer has to match the number of output classes
     # The initial settings are not even close to the optimal network architecture, try increasing the number of layers
     # and neurons and see what happens.
-    net = Network([train_data.shape[0],100, 100, 10], optimizer="adam")
-    net.train(train_data,train_class, val_data, val_class, 20, 64, 0.001)
+    net = Network([train_data.shape[0],100, 100, 10], optimizer="sgd")
+    net.train(train_data,train_class, val_data, val_class, 20, 64, 0.01)
     net.eval_network(test_data, test_class)
