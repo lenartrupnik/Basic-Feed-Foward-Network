@@ -18,9 +18,7 @@ class Network(object):
         self.biases = [np.zeros((x, 1)) for x in sizes[1:]]
         self.optimizer = optimizer
         self.layers = len(sizes)
-        self.lmbd = 0.5
-        self.t = 1
-        self.dropout = True
+        self.lmbd = 0.05
         
         if self.optimizer == "adam":
             self.momentum_dw, self.v_dw = [0 for i in range(1, len(sizes))], [0 for i in range(1, len(sizes))]
@@ -38,7 +36,7 @@ class Network(object):
         self.regularization = regularization
         decay_rate = 0.05
 
-        self.n = training_data.shape[1]
+        self.batch_size = training_data.shape[1]
         losses = []
         loss_eval = []
         acc_val = []
@@ -48,7 +46,7 @@ class Network(object):
             
             mini_batches = [
                 (training_data[:,k:k + mini_batch_size], training_class[:,k:k+mini_batch_size])
-                for k in range(0, self.n, mini_batch_size)]
+                for k in range(0, self.batch_size, mini_batch_size)]
 
             for mini_batch in mini_batches:
                 output, Zs, As = self.forward_pass(mini_batch[0])
@@ -61,7 +59,7 @@ class Network(object):
                 else:
                     gw, gb = net.backward_pass(output, mini_batch[1], Zs, As)
 
-                self.update_network(gw, gb, eta_current)                
+                self.update_network(gw, gb, eta_current, iteration = iteration_index)                
 
                 loss = cross_entropy(mini_batch[1], output)
                 loss_avg += loss
@@ -79,15 +77,23 @@ class Network(object):
             
             print("Epoch {} complete".format(j))
             print("Loss:" + str(loss_avg / len(mini_batches)))
+        
+        # Plot losses, accuracy
         plt.figure(1)
         plt.subplot(211)
         plt.plot(loss_eval, label = "Validation Loss")
         plt.plot(losses, label = "Training loss")
+        plt.title("Loss comparison (training - validation)")
+        plt.ylabel("Loss")
+        plt.xlabel("Epochs")
         plt.legend()
         
         plt.subplot(212)
         plt.plot(acc_val, label = "Accuracy")
         plt.legend()
+        plt.title("Validation accuracy")
+        plt.xlabel("Epochs")
+        plt.ylabel("Accuracy")
         plt.show()
 
 
@@ -113,14 +119,14 @@ class Network(object):
         print("Classification accuracy: "+ str(tp/n))
         return loss_avg / n, tp/n
 
-    def update_network(self, gw, gb, eta, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8):
+    def update_network(self, gw, gb, eta, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8, iteration = 0):
         # gw - weight gradients - list with elements of the same shape as elements in self.weights
         # gb - bias gradients - list with elements of the same shape as elements in self.biases
         # eta - learning rate
         # SGD
         if self.optimizer == "sgd" and self.regularization:
             for i in range(len(self.weights)):
-                self.weights[i] = (1- self.lmbd * eta/ self.n) * self.weights[i] - eta * gw[i]
+                self.weights[i] = (1- self.lmbd * eta/ self.batch_size) * self.weights[i] - eta * gw[i]
                 self.biases[i] -= eta * gb[i]
                 
         elif self.optimizer == "sgd" and not self.regularization:
@@ -136,17 +142,17 @@ class Network(object):
                 self.v_dw[i] = beta2 * self.v_dw[i] + (1 - beta2) * (gw[i]**2)
                 self.v_db[i] = beta2 * self.v_db[i] + (1 - beta2) * (gb[i]**2)
                 
-                momentum_dw_corr = self.momentum_dw[i] / (1 - beta1**self.t)
-                momentum_db_corr = self.momentum_db[i] / (1 - beta1**self.t)
+                momentum_dw_corr = self.momentum_dw[i] / (1 - beta1)
+                momentum_db_corr = self.momentum_db[i] / (1 - beta1)
                 
-                v_dw_corr = self.v_dw[i] / (1 - beta2**self.t)
-                v_db_corr = self.v_db[i] / (1 - beta2**self.t)
+                v_dw_corr = self.v_dw[i] / (1 - beta2)
+                v_db_corr = self.v_db[i] / (1 - beta2)
             
                 self.weights[i] -= eta * (momentum_dw_corr/(np.sqrt(v_dw_corr) + epsilon))
                 self.biases[i] -= eta * (momentum_db_corr/(np.sqrt(v_db_corr) + epsilon))
                     
         else:
-            raise ValueError('Unknown optimizer:'+self.optimizer)
+            raise ValueError('Unknown optimizer:'+ self.optimizer)
 
 
     def forward_pass(self, input):
@@ -179,8 +185,8 @@ class Network(object):
         
         
         dZ = softmax_dLdZ(output, target)
-        dW = np.dot(dZ, activations[-2].transpose()) + (self.lmbd / self.n) * self.weights[-1]
-        dB = np.sum(dZ, axis=1, keepdims=True)
+        dW = np.dot(dZ, activations[-2].transpose()) + (self.lmbd / self.batch_size) * self.weights[-1]
+        dB = np.sum(dZ, axis=1, keepdims=True) / self.batch_size
         dAPrev = np.dot(self.weights[-1].transpose(), dZ)
         
         dWs[-1] = dW
@@ -188,8 +194,8 @@ class Network(object):
         
         for l in range(self.layers -2, 0, -1):
             dZ = dAPrev * sigmoid_prime(Zs[l-1])
-            dW = np.dot(dZ, activations[l-1].transpose()) + (self.lmbd / self.n) * self.weights[l-1]
-            dB =  np.sum(dZ, axis=1, keepdims=True)
+            dW = np.dot(dZ, activations[l-1].transpose()) + (self.lmbd / self.batch_size) * self.weights[l-1]
+            dB =  np.sum(dZ, axis=1, keepdims=True) / self.batch_size
             
             if l > 1:
                 dAPrev = np.dot(self.weights[l-1].transpose(), dZ)
@@ -231,7 +237,7 @@ def softmax_dLdZ(output, target):
     # partial derivative of the cross entropy loss w.r.t Z at the last layer
     return output - target
 
-def cross_entropy(y_true, y_pred, epsilon=1e-12, lmbd = 0.5):
+def cross_entropy(y_true, y_pred, epsilon=1e-12):
     targets = y_true.transpose()
     predictions = y_pred.transpose()
     predictions = np.clip(predictions, epsilon, 1. - epsilon)
@@ -276,6 +282,6 @@ if __name__ == "__main__":
     # number of input attributes from the data, and the last layer has to match the number of output classes
     # The initial settings are not even close to the optimal network architecture, try increasing the number of layers
     # and neurons and see what happens.
-    net = Network([train_data.shape[0],100, 100,100, 10], optimizer="adam")
-    net.train(train_data,train_class, val_data, val_class, 30, 64, 0.001)
+    net = Network([train_data.shape[0],100, 100, 10], optimizer="adam")
+    net.train(train_data,train_class, val_data, val_class, 28, 32, 0.001)
     net.eval_network(test_data, test_class)
