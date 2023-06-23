@@ -1,0 +1,11 @@
+# Object file
+*.o
+
+# Ada Library Information
+*.ali
+DL_HW1_LR.zip
+DL_HW1_TASK1.pdf
+params.png
+test.py
+data/test_data.pckl
+data/train_data.pckl

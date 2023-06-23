@@ -1,0 +1,4 @@
+# Basic network implementation
+Loss:1.3406275354510122
+Validation Loss:1.4704816447572933
+Classification accuracy: 0.4771

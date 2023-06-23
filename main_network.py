@@ -25,7 +25,7 @@ class Network(object):
             self.momentum_db, self.v_db = [0 for i in range(1, len(sizes))], [0 for i in range(1, len(sizes))]
             
 
-    def train(self, training_data,training_class, val_data, val_class, epochs, mini_batch_size, eta, regularization=True):
+    def train(self, training_data,training_class, val_data, val_class, epochs, mini_batch_size, eta, regularization=True, decay_rate = True):
         # training data - numpy array of dimensions [n0 x m], where m is the number of examples in the data and
         # n0 is the number of input attributes
         # training_class - numpy array of dimensions [c x m], where c is the number of classes
@@ -35,7 +35,6 @@ class Network(object):
         iteration_index = 1
         eta_current = eta
         self.regularization = regularization
-        decay_rate = 0.05
         self.batch_size = training_data.shape[1]
         losses = []
         loss_eval = []
@@ -53,7 +52,10 @@ class Network(object):
                 output, Zs, As = self.forward_pass(mini_batch[0])
                 gw, gb = None, None
                 
-                # Use different backward_pass based on regularization
+                # Implement the learning rate schedule for Task 5
+                eta_current = eta * math.exp(-decay_rate * iteration_index)
+                
+                # Use different backward pass based on the regularization
                 if self.regularization:
                     gw, gb = net.backward_pass_regularization(output, mini_batch[1], Zs, As)
                     
@@ -64,9 +66,6 @@ class Network(object):
 
                 loss = cross_entropy(mini_batch[1], output)
                 loss_avg += loss
-                
-                # Implement the learning rate schedule for Task 5
-                eta_current = eta * math.exp(-decay_rate * iteration_index)
             
             iteration_index += 1
             
@@ -283,6 +282,6 @@ if __name__ == "__main__":
     # number of input attributes from the data, and the last layer has to match the number of output classes
     # The initial settings are not even close to the optimal network architecture, try increasing the number of layers
     # and neurons and see what happens.
-    net = Network([train_data.shape[0],100, 100, 10], optimizer="sgd")
-    net.train(train_data,train_class, val_data, val_class, 20, 64, 0.01)
+    net = Network([train_data.shape[0],512, 256, 128, 10], optimizer="adam")
+    net.train(train_data,train_class, val_data, val_class, 30, 64, 0.0005, regularization=True, decay_rate=0.005)
     net.eval_network(test_data, test_class)
